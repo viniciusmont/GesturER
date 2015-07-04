@@ -1,0 +1,856 @@
+/*Copyright [2015] [VINICIUS MONTENEGRO SILVA]
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.*/
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<style>
+			#canvas1 {
+				border:1px solid #000000;
+			}
+			
+			#informations{
+				position: absolute;
+				top:20px;
+				left:1000px;
+				display:none;
+			}
+
+			#updateSelectionBox
+			{	position: absolute;
+				display: none;
+				background-color: #C0C0C0;
+				border: #696969 1px solid;
+
+				-moz-border-radius:7px;
+				-webkit-border-radius:7px;
+				 border-radius:7px;
+			}
+			
+			#confirmationBox
+			{	position: absolute;
+				display: none;
+				background-color: #C0C0C0;
+				border: #696969 1px solid;
+
+				-moz-border-radius:7px;
+				-webkit-border-radius:7px;
+				 border-radius:7px;
+			}
+			
+			#inputBox
+			{	position: absolute;
+				display: none;
+				margin: 0 auto;
+				background-color: #C0C0C0;
+				border: #696969 1px solid;
+				
+				-moz-border-radius:7px;
+				-webkit-border-radius:7px;
+				 border-radius:7px;
+			}
+		</style>
+	</head>
+	<body id="b">
+		<canvas id="canvas1"></canvas>
+		<div id="updateSelectionBox">
+			<select id="updateSelect">
+				<option value="1">Entity Name</option>
+				<option value="2">Entity Identifier Name</option>
+			</select>
+		</div>
+		<div id="inputBox">
+			<center>
+				<label id="labelGenericInputText"></label><br>
+				<input type="text" id="genericInputText"></br>
+				<input type="button" id="genericInputTextSubmit" value="Submit">
+			</center>
+		</div>
+		<div id="confirmationBox">
+			<center>
+				<label id="labelGenericConfirmation"></label><br>
+				<input type="button" value="Sim" id="genericConfirmButton">
+				<input type="button" value="Não" id="genericCancelButton"></br>
+			</center>
+		</div>
+	</body>
+<script>
+// CORE CANVAS VARIABLES
+var canvas = document.getElementById("canvas1");
+var context = canvas.getContext("2d");
+var fps = 40;
+var timer1;
+var img = new Image();
+
+// CORE TOUCH CONSTANT'S
+const LIMIT_SPACE_COORDINATE = 2;
+const DOUBLE = HALF = 2; 
+const TWENTY_PERCENT = 0.2;
+const BASE_TEN = 10;
+const POSITIVE_HIGH_VALUE = 9999;
+const NEGATIVE_HIGH_VALUE = -9999;
+const MAX_TAP_PRESS_TIME = 80;
+
+const MAX_INTERVAL_EXTREMESX = 300;
+const MIN_INTERVAL_EXTREMESX = 60;
+const MIN_INTERVAL_EXTREMESY = 80;
+const MAX_INTERVAL_EXTREMESY = 200;
+const VARIATION_LIMIT = 50;
+						
+// CORE TOUCH GLOBAL VARIABLES
+var fingers = [];
+var lastFingerTaped;
+var fingerInEntities = false;
+var twoFingersInitialDistance = 0;
+var twoFingersDistance = 0;
+
+// CORE ENTITIES GLOBAL VARIABLES
+var lastEntityIndex = 0;
+var	entities = [];
+
+// CORE ENTITIES GLOBAL VARIABLES
+var lastRelationshipIndex = 0;
+var temporaryRelationship = -1;
+var	relationships = [];
+
+// ENTITIES AND ATTRIBUTES CONSTANT'S
+const MINIMAL_DISTANCEX_BETWEEN_ENTITIES = 40;
+const MINIMAL_DISTANCEY_BETWEEN_ENTITIES = 40;
+const ENTITIES_WIDTH = 140;
+const ENTITIES_HEIGHT = 100;
+const DEFAULT_RADIUS = 10;
+const FIRST_INDEX = 0;
+const NEGATIVE_INDEX = -1;
+const CREATE_INDEX = 0;
+const UPDATE_INDEX = 1;
+
+// WINDOW HTML COMPONNENTS CONSTANT'S
+const BODY_NODE = document.getElementsByTagName('body')[0];
+const STRECH_WINDOW_PERCENTAGE = 35;
+const PROPORTIONAL_PERCENTAGE_WIDTH_INPUT = 0.2;
+const PROPORTIONAL_PERCENTAGE_HEIGHT_INPUT = 0.2;
+
+// WINDOW HTML COMPONENTS VARIABLES
+var windowWidth;
+var windowHeight;
+var canvasWidth;
+var canvasHeight;
+
+var isRelationship = false;
+var lastFingerEnd = -1;
+
+function Finger(id, pointXi, pointYi, pointX, pointY, intervalX, intervalY, coordinate, startTime)
+{	this.id = id;
+	this.pointX = pointX;
+	this.pointY = pointY;
+	this.pointXi = pointXi;
+	this.pointYi = pointYi;
+	this.intervalX = intervalX;
+	this.intervalY = intervalY;
+	this.coordinate_initial = coordinate;
+	this.coordinate_final = coordinate;
+	this.interval_coordinate = 0;
+	this.startTime = startTime;
+	
+	this.majorX = NEGATIVE_HIGH_VALUE;
+	this.majorY = NEGATIVE_HIGH_VALUE;
+	this.minorX = POSITIVE_HIGH_VALUE;
+	this.minorY = POSITIVE_HIGH_VALUE;
+	
+	this.variationOfX = VARIATION_LIMIT*DOUBLE;
+	this.variationOfY = VARIATION_LIMIT*DOUBLE;
+	
+	this.intervalExtremesX = 0;
+	this.intervalExtremesY = 0;	
+	
+	this.spaceOfMinorEntityXAndXi = 0;
+	this.spaceOfMinorEntityYAndYi = 0;
+	
+	this.drawing = false;
+}
+
+function Attribute(id, idEntity,  name, type, pointX, pointY)
+{	this.id = id;
+	this.idEntity = idEntity;
+	
+	this.name = name;
+	this.type = type;
+	
+	this.pointX = pointX;
+	this.pointY = pointY;
+	
+	this.radius = DEFAULT_RADIUS;
+}
+
+function Entity(id, pointXi, pointYi, pointX, pointY, intervalX, intervalY, minorX, minorY, coordinate, name)
+{	this.id = id;
+	this.name = name;
+
+	this.pointX = pointX;
+	this.pointY = pointY;
+	
+	this.pointXi = pointXi;
+	this.pointYi = pointYi;
+	
+	this.intervalX = intervalX;
+	this.intervalY = intervalY;
+	
+	this.minorX = minorX;
+	this.minorY = minorY;
+	
+	this.coordinate = coordinate;
+	
+	this.selected = false;
+	
+	this.attributes = [];
+}
+
+function Relationship()
+{	var id;
+	
+	var entityA;
+	var entityB;
+	
+	var cardinalityA;
+	var cardinalityB;
+}
+
+Relationship.prototype.setID = function (id)
+{	this.id = id;
+}
+
+Relationship.prototype.setEntityA = function (entityA)
+{	this.entityA = entityA;
+}
+
+Relationship.prototype.setEntityB = function (entityB)
+{	this.entityB = entityB;
+}
+
+Relationship.prototype.setCardinalityA = function (cardinalityA)
+{	this.cardinalityA = cardinalityA;
+}
+
+Relationship.prototype.setCardinalityB = function (cardinalityB)
+{	this.cardinalityB = cardinalityB;
+}
+
+function searchFinger(id)
+{	for (var i = 0; i < fingers.length; i++) 
+	{	if (id == fingers[i].id) 
+			return(i);
+	}
+	return(NEGATIVE_INDEX);
+}
+
+function searchEntity(id)
+{	for (var i = 0; i < entities.length; i++) 
+	{	if (id == entities[i].id) 
+			return(i);
+	}	
+	return(NEGATIVE_INDEX);
+}
+
+canvas.addEventListener("touchstart", function(e)
+{	e.preventDefault();
+	var touches = e.changedTouches;
+	var tempEntity;
+	
+	for (var i = 0; i < touches.length; i++) 
+	{	var pointX = touches[i].clientX || touches[i].pageX;
+		var pointY = touches[i].clientY || touches[i].pageY;
+		fingers.push(new Finger(touches[i].identifier, pointX, pointY,
+								pointX, pointY, 0, 0,
+								Math.atan2(pointX, pointY),
+								(new Date()).getTime()));
+								
+		fingers[touches[i].identifier].majorX = pointX;
+		fingers[touches[i].identifier].majorY = pointY; 
+		fingers[touches[i].identifier].minorX = pointX;
+		fingers[touches[i].identifier].minorY = pointY;
+		
+		tempEntity = colisionWithFingerAndEntity(fingers[touches[i].identifier]);
+		
+		if (tempEntity != NEGATIVE_INDEX)
+		{	fingers[touches[i].identifier].drawing = false;
+			fingers[touches[i].identifier].spaceOfMinorEntityXAndXi = tempEntity.minorX - fingers[touches[i].identifier].minorX;
+			fingers[touches[i].identifier].spaceOfMinorEntityYAndYi = tempEntity.minorY - fingers[touches[i].identifier].minorY;
+		}
+		else
+		{	fingers[touches[i].identifier].drawing = true;
+		}
+	}
+}, false);
+
+canvas.addEventListener("touchend", function(e)
+{	e.preventDefault();
+	var touches = e.changedTouches;
+	var currentCoordinated;
+	var oldCoordinated;
+	var distance;
+	
+	/*pinch end*/
+	if(fingers.length == 2 && twoFingersInitialDistance != null)
+	{	twoFingersInitialDistance = null;
+		twoFingersDistance = null;
+		distance = null;
+		fingers.splice(0,2);
+		clear();					
+	}
+	else
+	{	if (entities.length >= 2 && fingers.length <= 4)
+		{	if (fingers.length == 4)
+			{	if (temporaryRelationship == -1) 
+				{	temporaryRelationship =	new Relationship();
+				}	
+				alert(fingers.length+" TESTE");
+				/*TEM Q TA 1 em CADA entidade*/
+				for (var i = 0; i < touches.length; i++)
+				{	var p = searchFinger(touches[i].identifier);
+					var entidadeRelacao = colisionWithFingerAndEntity(fingers[p]);
+					if (entidadeRelacao != NEGATIVE_INDEX)
+					{	if(!fingers[p].drawing)
+						{	relationships[lastRelationshipIndex].setEntityA(entidadeRelacao);
+							relationships[lastRelationshipIndex].setCardinalityA('N');
+							relationships[lastRelationshipIndex].setCardinalityB('N');
+						}
+						//fingerInEntities = true;
+					}
+					if(p != NEGATIVE_INDEX)
+					{	lastFingerEnd = fingers[p];
+						fingers.splice(p, 1);
+					}
+				}
+			}
+			else
+				if (fingers.length == 3)
+				{	if (temporaryRelationship == -1) 
+					{	temporaryRelationship =	new Relationship();
+					}
+					alert(fingers.length+" TESTE");
+					/*TEM Q TA 1 em CADA entidade*/
+					for (var i = 0; i < touches.length; i++)
+					{	var p = searchFinger(touches[i].identifier);
+						if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
+						{	if(!fingers[p].drawing)
+								fingerInEntities = true;
+						}
+						if(p != NEGATIVE_INDEX)
+						{	lastFingerEnd = fingers[p];
+							fingers.splice(p, 1);
+						}
+					}
+				}
+				else
+					if (fingers.length == 2)
+					{	if (temporaryRelationship == -1) 
+						{	temporaryRelationship =	new Relationship();
+						}
+						alert(fingers.length+" TESTE");
+						/*TEM Q TA 1 em 1 entidade e 2 em outra entidade*/
+						for (var i = 0; i < touches.length; i++)
+						{	var p = searchFinger(touches[i].identifier);
+							if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
+							{	if(!fingers[p].drawing)
+									fingerInEntities = true;
+							}
+							if(p != NEGATIVE_INDEX)
+							{	lastFingerEnd = fingers[p];
+								fingers.splice(p, 1);
+							}
+						}
+					}
+					else
+						if(fingers.length == 1)
+						{	alert(fingers.length+" TESTE");
+							/*TEM Q TA 2 em cada entidade*/
+							for (var i = 0; i < touches.length; i++)
+							{	var p = searchFinger(touches[i].identifier);
+								if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
+								{	if(!fingers[p].drawing)
+										fingerInEntities = true;
+								}
+								if(p != NEGATIVE_INDEX)
+								{	lastFingerEnd = fingers[p];
+									fingers.splice(p, 1);
+								}
+							}
+							if (temporaryRelationship != -1)
+							{	relationships.push(temporaryRelationship);
+								lastRelationshipIndex = relationships.length-1;
+								temporaryRelationship = -1;
+							}
+						}
+				
+			// for (var i = 0; i < touches.length; i++)
+			// {	var p = searchFinger(touches[i].identifier);
+			// 	if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
+			// 	{	if(!fingers[p].drawing)
+			// 			fingerInEntities = true;
+			// 	}
+			// 	if(p != NEGATIVE_INDEX)
+			// 	{	fingers.splice(p, 1);
+			// 	}
+			// }
+			//fingerInEntities.splice(0,fingerInEntities.length);
+		}
+		else
+		{	for (var i = 0; i < touches.length; i++)
+			{	var p = searchFinger(touches[i].identifier);
+				
+				if(p != NEGATIVE_INDEX)
+				{	var timeNow = (new Date).getTime(); 
+					var intervalTime = timeNow-fingers[p].startTime;
+						
+					if (touches.length == 1)
+					{	if (intervalTime <= MAX_TAP_PRESS_TIME)
+						{	//console.log("tap");	
+							if(lastFingerTaped != null)
+							{	if (fingers[p].startTime-lastFingerTaped.startTime >= VARIATION_LIMIT && fingers[p].startTime-lastFingerTaped.startTime <= 600)
+								{	var oldCoordinate = parseInt(((lastFingerTaped.coordinate_initial * BASE_TEN)%BASE_TEN));
+									var nowCoordinate = parseInt(((fingers[p].coordinate_initial * BASE_TEN)%BASE_TEN));
+									
+									if ( nowCoordinate == oldCoordinate || (nowCoordinate+LIMIT_SPACE_COORDINATE) == oldCoordinate || (nowCoordinate-LIMIT_SPACE_COORDINATE) == oldCoordinate )
+									{	var entity = dragColidesEntity(fingers[p]);
+										if (entity != NEGATIVE_INDEX)
+										{	console.log(UPDATE_INDEX);
+											updateEntity(entity, UPDATE_INDEX);
+										}
+										//console.log("double tap");
+									}
+								}
+							}
+							lastFingerTaped = fingers[p];
+						}
+						
+						fingers[p].intervalExtremesX = fingers[p].majorX - fingers[p].minorX;
+						fingers[p].intervalExtremesY = fingers[p].majorY - fingers[p].minorY;
+						
+						var pointX = touches[i].clientX || touches[i].pageX;
+						var pointY = touches[i].clientY || touches[i].pageY;
+						
+						//AVERIGUAR TRIANGULO
+						if 	((fingers[p].drawing) && (fingers[p].interval_coordinate <= 0.01)
+							&& ((fingers[p].intervalExtremesX >= MIN_INTERVAL_EXTREMESX && fingers[p].intervalExtremesX <= MAX_INTERVAL_EXTREMESX) 
+							&& (fingers[p].intervalExtremesY >= MIN_INTERVAL_EXTREMESY && fingers[p].intervalExtremesY <= MAX_INTERVAL_EXTREMESY)
+							&& (fingers[p].variationOfX <= VARIATION_LIMIT && fingers[p].variationOfY <= VARIATION_LIMIT)))	
+							{	
+								var actualEntityIdentifier = entities.length;
+									
+								var newEntity = new Entity(entities.length, pointX, pointY,
+											pointX, pointY, 0, 0,
+											fingers[p].minorX, fingers[p].minorY,
+											Math.atan2(pointX, pointY), "");
+								
+								//Não permitir criar entidade enquanto digita as coisas;
+								if(!fingerInEntities)
+								{	entities.push(newEntity);
+									lastEntityIndex = entities.length-1;
+									
+									updateEntity(lastEntityIndex, CREATE_INDEX);
+									
+									entities[lastEntityIndex].attributes.push(new Attribute(touches[i].identifier*BASE_TEN, 
+											actualEntityIdentifier, "", "primary", (entities[lastEntityIndex].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT)), 
+											entities[lastEntityIndex].minorY-(ENTITIES_HEIGHT*TWENTY_PERCENT)));
+								}
+								else 
+								{	alert("You cannot draw an Entity over or near other!");
+								}
+							}
+					}
+					fingers.splice(p, 1);
+				}
+			}
+		}
+		clear();					
+	}
+	fingerInEntities = false;
+}, false);
+
+canvas.addEventListener("touchmove", function(e)
+{	e.preventDefault();
+	var touches = e.changedTouches;
+	var flagRelationship = false;
+					
+	if (touches.length == 4)
+		flagRelationship = true;
+	if (touches.length > 4) 
+		fingerInEntities = false;
+	
+	for (var i = 0; i < touches.length; i++)
+	{	var p = searchFinger(touches[i].identifier);
+		if (p != NEGATIVE_INDEX)
+		{	
+			var timeNow = (new Date).getTime(); 
+			
+			if(colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
+				fingerInEntities = true;
+				
+			var pointX = touches[i].clientX || touches[i].pageX;
+			var pointY = touches[i].clientY || touches[i].pageY;
+						
+			fingers[p].pointX = pointX;
+			fingers[p].pointY = pointY;
+			fingers[p].intervalX = fingers[p].pointX-fingers[p].pointXi; 
+			fingers[p].intervalY = fingers[p].pointY-fingers[p].pointYi;
+			
+			if(pointX > fingers[p].majorX)
+				fingers[p].majorX = pointX;
+			
+			if(pointX < fingers[p].minorX)
+				fingers[p].minorX = pointX;
+			
+			if(pointY > fingers[p].majorY)
+				fingers[p].majorY = pointY;
+			
+			if(pointY < fingers[p].minorY)
+				fingers[p].minorY = pointY;
+			
+			fingers[p].intervalExtremesX = fingers[p].majorX - fingers[p].minorX;
+			fingers[p].intervalExtremesY = fingers[p].majorY - fingers[p].minorY;
+			
+			fingers[p].variationOfX = fingers[p].pointXi - fingers[p].pointX;
+			fingers[p].variationOfY = fingers[p].pointYi - fingers[p].pointY;
+			
+			if (fingers[p].variationOfX < 0) 
+				fingers[p].variationOfX = fingers[p].variationOfX*(NEGATIVE_INDEX);
+			
+			if (fingers[p].variationOfY < 0) 
+				fingers[p].variationOfY = fingers[p].variationOfY*(NEGATIVE_INDEX);
+			
+			fingers[p].coordinate_final = Math.atan2(fingers[p].pointX,fingers[p].pointY);
+			fingers[p].interval_coordinate = fingers[p].coordinate_final-fingers[p].coordinate_initial;	
+			
+			if(touches.length == 1)
+			{	var intervalTime = timeNow-fingers[p].startTime;
+				
+				var draggedEntity = isDragEntity(fingers[p], intervalTime);
+				if (draggedEntity != NEGATIVE_INDEX)
+				{	
+					entities[draggedEntity].minorX = (fingers[p].pointX+fingers[p].spaceOfMinorEntityXAndXi);
+					entities[draggedEntity].minorY = (fingers[p].pointY+fingers[p].spaceOfMinorEntityYAndYi);
+						
+					entities[draggedEntity].attributes[FIRST_INDEX].pointX = entities[draggedEntity].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT);
+					entities[draggedEntity].attributes[FIRST_INDEX].pointY = entities[draggedEntity].minorY-20;
+					fingerInEntities = false;
+					
+					//REMOVE TESTS
+					if(isEntityOutOfDraw(entities[draggedEntity]))
+					{	removeEntity(draggedEntity, fingers[p]);
+					}
+					clear();
+				}
+			}
+
+			if (fingers[p].intervalX < 0)
+				fingers[p].intervalX = fingers[p].intervalX*(NEGATIVE_INDEX);
+			
+			if (fingers[p].intervalY < 0)
+				fingers[p].intervalY = fingers[p].intervalY*(NEGATIVE_INDEX);
+		}
+	}	
+}, false);
+
+// TOUCH METHODS
+function isDragEntity(finger,intervalTime){
+	var draggedEntity = dragColidesEntity(finger);
+	if(!(finger.drawing) && intervalTime > VARIATION_LIMIT && (draggedEntity != NEGATIVE_INDEX)) return draggedEntity;
+	else return NEGATIVE_INDEX;
+}
+
+// WINDOW HTML AND CANVAS EXECUTION METHODS
+function updateEntity(entity,stateIndex)
+{
+	var inputBox = document.getElementById("inputBox");
+	var inputBoxLabel = document.getElementById("labelGenericInputText");
+	var inputBoxInput = document.getElementById("genericInputText");
+	var inputBoxButton = document.getElementById("genericInputTextSubmit");
+
+	inputBox.style.width = canvasWidth*PROPORTIONAL_PERCENTAGE_WIDTH_INPUT;
+	inputBox.style.height = canvasHeight*PROPORTIONAL_PERCENTAGE_HEIGHT_INPUT;
+
+	var tempInputWidth = inputBox.style.width.substr(0,inputBox.style.width.indexOf('p')-2);
+	var tempInputHeight = inputBox.style.height.substr(0,inputBox.style.height.indexOf('p')-2);
+
+	inputBox.style.left = ((canvasWidth/HALF)-(tempInputWidth/HALF))+"px";
+	inputBox.style.top = ((canvasHeight/HALF)-(tempInputHeight/HALF))+"px";
+
+	inputBox.style.display = "block";
+	inputBoxInput.focus();
+	
+	if (stateIndex == 0)
+	{	inputBoxLabel.innerHTML = "<h3>[- New Entity -]</h3> <br> Enter entity name:";
+		inputBoxButton.onclick = function () {
+			entities[entity].name = inputBoxInput.value;
+			inputBoxInput.value = "";
+			inputBoxLabel.innerHTML = "<h3>[- New Entity -]</h3> <br> Enter the name of identifier attribute:";
+			inputBoxInput.focus();
+			inputBoxButton.onclick = function () {
+				entities[entity].attributes[FIRST_INDEX].name = inputBoxInput.value;
+				inputBoxInput.value = "";
+				inputBox.style.display = "none";
+			}
+		}	
+	}
+	else
+	{	inputBoxLabel.innerHTML = "<h3>[- Update Entity -]</h3> <br> Enter entity name:";
+		if (stateIndex == 1)
+		{	inputBoxButton.onclick = function () {
+				inputBoxLabel.innerHTML = "<h3>[- New Entity -]</h3> <br> Enter the name of identifier attribute:";
+				entities[entity].name = inputBoxInput.value;
+				clear();
+				inputBoxInput.value = "";
+				inputBox.style.display = "none";
+			}		
+		}
+	}
+}
+
+function chooseUpdateEntity(entity){
+// {	var updateOption = document.getElementById("selectUpdate").onchange;
+// 	if (updateOption == 1)
+// 	{}
+// 	else
+// 	{}
+}
+
+function removeEntity(entity, finger)
+{	
+	var confirmationBox = document.getElementById("confirmationBox");
+	var confirmationBoxLabel = document.getElementById("labelGenericConfirmation");
+	var confirmationOkButton = document.getElementById("genericConfirmButton");
+	var confirmationCancelButton = document.getElementById("genericCancelButton");
+	
+	var confirmationValue = document.getElementById("genericConfirmValue");
+
+	confirmationBox.style.width = canvasWidth*PROPORTIONAL_PERCENTAGE_WIDTH_INPUT;
+	confirmationBox.style.height = canvasHeight*PROPORTIONAL_PERCENTAGE_HEIGHT_INPUT;
+
+	var tempInputWidth = confirmationBox.style.width.substr(0,confirmationBox.style.width.indexOf('p')-2);
+	var tempInputHeight = confirmationBox.style.height.substr(0,confirmationBox.style.height.indexOf('p')-2);
+
+	confirmationBox.style.left = ((canvasWidth/HALF)-(tempInputWidth/HALF))+"px";
+	confirmationBox.style.top = ((canvasHeight/HALF)-(tempInputHeight/HALF))+"px";
+
+	confirmationBox.style.display = "block";
+	confirmationBoxLabel.innerHTML = "Want are you  exclude this entity?";
+	confirmationOkButton.focus();
+
+	confirmationOkButton.onclick = function () {
+		confirmationBox.style.display = "none";
+		entities.splice(entity, 1);
+		clear();
+	}
+	confirmationCancelButton.onclick = function () {
+		confirmationBox.style.display = "none";
+		
+		entities[entity].minorX = (finger.pointXi+finger.spaceOfMinorEntityXAndXi);
+		entities[entity].minorY = (finger.pointYi+finger.spaceOfMinorEntityYAndYi);
+			
+		entities[entity].attributes[FIRST_INDEX].pointX = entities[entity].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT);
+		entities[entity].attributes[FIRST_INDEX].pointY = entities[entity].minorY-20;
+		fingerInEntities = false;
+		clear();
+	}
+}
+
+// COLISION METHODS
+function isEntityOutOfDraw(entity)
+{	var sideColision, extremeColision;
+	sideColision, extremeColision = false;
+	
+	if (entity.minorX + ENTITIES_WIDTH >= canvasWidth || entity.minorX <= 0) <!-- COLIDIU X -->
+		sideColision = true;
+	if (entity.minorY + ENTITIES_HEIGHT >= canvasHeight || entity.minorY <= 0) <!-- COLIDIU Y -->
+		extremeColision = true;
+	
+	if (sideColision || extremeColision)
+	{	return true;
+	}
+	else 
+	{	return false;
+	}	
+}
+
+function detectFingerColisionEntity(finger,entity)
+{	var leftColision, rightColision, topColision,  bottomColision;
+	leftColision = rightColision = topColision = bottomColision = false;
+	
+	if (finger.pointX/*-MINIMAL_DISTANCEX_BETWEEN_ENTITIES*/ >= entity.minorX && finger.pointX/*-MINIMAL_DISTANCEX_BETWEEN_ENTITIES*/ <= entity.minorX + ENTITIES_WIDTH) <!-- COLIDIU X ESQUERDA-->
+		leftColision = true;
+	if (finger.pointX/*+MINIMAL_DISTANCEX_BETWEEN_ENTITIES*/ <= entity.minorX + ENTITIES_WIDTH && finger.pointX/*+MINIMAL_DISTANCEX_BETWEEN_ENTITIES*/ >= entity.minorX) <!-- COLIDIU X DIREITA-->
+		rightColision = true;
+	if (finger.pointY/*-MINIMAL_DISTANCEY_BETWEEN_ENTITIES*/ >= entity.minorY && finger.pointY/*-MINIMAL_DISTANCEY_BETWEEN_ENTITIES*/ <= entity.minorY + ENTITIES_HEIGHT) <!-- COLIDIU Y CIMA -->
+		topColision = true;
+	if (finger.pointY/*-MINIMAL_DISTANCEY_BETWEEN_ENTITIES*/ <= entity.minorY + ENTITIES_HEIGHT && finger.pointY/*-MINIMAL_DISTANCEY_BETWEEN_ENTITIES*/ >= entity.minorY) <!-- COLIDIU Y BAIXO -->
+		bottomColision = true;
+	
+	if ((rightColision || leftColision) && (topColision || bottomColision))
+		return true;
+	else 
+		return false;
+}
+
+function dragColidesEntity(finger)
+{	for (var i = 0; i < entities.length; i++)
+	{	if(detectFingerColisionEntity(finger, entities[i]))
+		{	return i;
+		}
+	}
+	return NEGATIVE_INDEX;
+}
+
+function colisionWithFingerAndEntity(finger)
+{	for (var i = 0; i < entities.length; i++)
+	{	if(detectFingerColisionEntity(finger, entities[i]))
+		{	return entities[i];
+		}
+	}
+	return NEGATIVE_INDEX;
+}
+
+function detectEntityColision(entityA, entityB)
+{	var leftColision, rightColision, topColision,  bottomColision;
+	leftColision = rightColision = topColision = bottomColision = false;
+	
+	if (entityB.minorX + ENTITIES_WIDTH >= entityA.minorX && entityB.minorX + ENTITIES_WIDTH <= entityA.minorX + ENTITIES_WIDTH) <!-- COLIDIU X ESQUERDA-->
+		leftColision = true;
+	if (entityB.minorX <= entityA.minorX + ENTITIES_WIDTH && entityB.minorX >= entityA.minorX) <!-- COLIDIU X DIREITA-->
+		rightColision = true;
+	if (entityB.minorY + ENTITIES_HEIGHT >= entityA.minorY && entityB.minorY + ENTITIES_HEIGHT <= entityA.minorY + ENTITIES_HEIGHT) <!-- COLIDIU Y CIMA -->
+		topColision = true;
+	if (entityB.minorY <= entityA.minorY + ENTITIES_HEIGHT && entityB.minorY >= entityA.minorY) <!-- COLIDIU Y BAIXO -->
+		bottomColision = true;
+	
+	if ( (rightColision || leftColision) && (topColision || bottomColision) )
+	{	return true;
+	}
+	else 
+	{	return false;
+	}
+}
+
+function colisionBetweenEntities(entity)
+{	for (var i = 0; i < entities.length; i++)
+	{	if(detectEntityColision(entities[i], entity))
+		{	return true;
+		}
+	}
+	return false;
+}
+
+//DRAW METHODS
+function drawPencil()
+{	context.fillStyle = "gray";
+	for (var i = 0; i < fingers.length; i++) 
+	{	context.beginPath();
+		context.arc(fingers[i].pointX, fingers[i].pointY, 5, 0, DOUBLE*Math.PI, true);
+		context.fill();
+		context.stroke();
+	}
+}
+
+function drawAttributes(entity)
+{	context.fillStyle = "black";
+	for (var i = 0; i < entity.attributes.length; i++) 
+	{	context.beginPath();
+		context.arc(entity.attributes[i].pointX, entity.attributes[i].pointY, entity.attributes[i].radius, 0, DOUBLE*Math.PI, true);
+		context.fill();
+		context.stroke();
+		
+		//draw line from entity to attr
+		context.beginPath();
+		context.moveTo(entity.attributes[i].pointX,entity.attributes[i].pointY+entity.attributes[i].radius);
+		context.lineTo(entity.attributes[i].pointX,entity.attributes[i].pointY+20);
+		context.stroke(); 
+		
+		// draw circle attr
+		context.font="18px Arial";
+		context.fillStyle="#008B00";
+		context.fillText(entity.attributes[i].name,entity.attributes[i].pointX+12,entity.attributes[i].pointY);
+	}
+}
+
+function drawEntities()
+{	context.fillStyle = "black";
+	
+	for (var i = 0; i < entities.length; i++)
+	{	context.strokeRect(entities[i].minorX, entities[i].minorY, ENTITIES_WIDTH, ENTITIES_HEIGHT);
+		context.font="20px Arial";
+		context.fillStyle="black";
+		context.fillText(entities[i].name,entities[i].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT),entities[i].minorY+(ENTITIES_HEIGHT/HALF));
+		drawAttributes(entities[i]);
+	}
+}
+
+function clear()
+{	context.fillStyle = "white";
+	context.fillRect(0, 0, canvasWidth, canvasHeight);
+	//context.drawImage(img,(canvasWidth/2)-(img.width/2), (canvasHeight/2)-(img.height/2));
+	drawEntities();
+}
+
+// SCREEN ADAPTER METHODS
+function strechScreen()
+{	// GET WINDOW SIZE ATTRIBUTES
+	var ua = navigator.userAgent.toLowerCase();
+	var check = function(r) {
+		return r.test(ua);
+	};
+	
+	var isChrome = check(/chrome/);
+	if (isChrome)
+	{	windowHeight = BODY_NODE.clientHeight;
+		windowWidth = BODY_NODE.clientWidth;
+	}	
+	else 
+	{	windowWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+		windowHeight =  window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight 
+	}
+	
+	// SET CANVAS SIZE VAR 
+	canvasWidth = windowWidth-(windowWidth/STRECH_WINDOW_PERCENTAGE)
+	canvasHeight = windowHeight-(windowHeight/STRECH_WINDOW_PERCENTAGE);
+	
+	// SET CANVAS SIZE 
+	canvas.style.width = canvasWidth;
+	canvas.style.height = canvasHeight; 
+	
+	// DRAW RECT ON CANVAS
+	canvas.width = canvasWidth;
+	canvas.height = canvasHeight
+	context.fillStyle = "white";
+	context.fillRect(0, 0, canvasWidth, canvasHeight);	
+	 
+	// PRE-LOAD LOGO
+	img.src = "teste.png";
+}
+
+// CORE CANVAS METHODS
+function loop()
+{	drawEntities();
+	drawPencil();
+}
+
+function start_resume()
+{	strechScreen();
+	timer1 = setInterval(loop, 1000/fps);
+}
+
+function pause()
+{	clearTimeout(timer1);
+}
+
+start_resume();
+</script>
+</html>
