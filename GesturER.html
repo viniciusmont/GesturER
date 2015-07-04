@@ -299,7 +299,6 @@ canvas.addEventListener("touchend", function(e)
 	var oldCoordinated;
 	var distance;
 	
-	/*pinch end*/
 	if(fingers.length == 2 && twoFingersInitialDistance != null)
 	{	twoFingersInitialDistance = null;
 		twoFingersDistance = null;
@@ -314,7 +313,6 @@ canvas.addEventListener("touchend", function(e)
 				{	temporaryRelationship =	new Relationship();
 				}	
 				alert(fingers.length+" TESTE");
-				/*TEM Q TA 1 em CADA entidade*/
 				for (var i = 0; i < touches.length; i++)
 				{	var p = searchFinger(touches[i].identifier);
 					var entidadeRelacao = colisionWithFingerAndEntity(fingers[p]);
@@ -324,7 +322,6 @@ canvas.addEventListener("touchend", function(e)
 							relationships[lastRelationshipIndex].setCardinalityA('N');
 							relationships[lastRelationshipIndex].setCardinalityB('N');
 						}
-						//fingerInEntities = true;
 					}
 					if(p != NEGATIVE_INDEX)
 					{	lastFingerEnd = fingers[p];
@@ -338,7 +335,6 @@ canvas.addEventListener("touchend", function(e)
 					{	temporaryRelationship =	new Relationship();
 					}
 					alert(fingers.length+" TESTE");
-					/*TEM Q TA 1 em CADA entidade*/
 					for (var i = 0; i < touches.length; i++)
 					{	var p = searchFinger(touches[i].identifier);
 						if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
@@ -357,7 +353,6 @@ canvas.addEventListener("touchend", function(e)
 						{	temporaryRelationship =	new Relationship();
 						}
 						alert(fingers.length+" TESTE");
-						/*TEM Q TA 1 em 1 entidade e 2 em outra entidade*/
 						for (var i = 0; i < touches.length; i++)
 						{	var p = searchFinger(touches[i].identifier);
 							if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
@@ -373,7 +368,6 @@ canvas.addEventListener("touchend", function(e)
 					else
 						if(fingers.length == 1)
 						{	alert(fingers.length+" TESTE");
-							/*TEM Q TA 2 em cada entidade*/
 							for (var i = 0; i < touches.length; i++)
 							{	var p = searchFinger(touches[i].identifier);
 								if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
@@ -391,18 +385,6 @@ canvas.addEventListener("touchend", function(e)
 								temporaryRelationship = -1;
 							}
 						}
-				
-			// for (var i = 0; i < touches.length; i++)
-			// {	var p = searchFinger(touches[i].identifier);
-			// 	if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
-			// 	{	if(!fingers[p].drawing)
-			// 			fingerInEntities = true;
-			// 	}
-			// 	if(p != NEGATIVE_INDEX)
-			// 	{	fingers.splice(p, 1);
-			// 	}
-			// }
-			//fingerInEntities.splice(0,fingerInEntities.length);
 		}
 		else
 		{	for (var i = 0; i < touches.length; i++)
@@ -414,8 +396,7 @@ canvas.addEventListener("touchend", function(e)
 						
 					if (touches.length == 1)
 					{	if (intervalTime <= MAX_TAP_PRESS_TIME)
-						{	//console.log("tap");	
-							if(lastFingerTaped != null)
+						{	if(lastFingerTaped != null)
 							{	if (fingers[p].startTime-lastFingerTaped.startTime >= VARIATION_LIMIT && fingers[p].startTime-lastFingerTaped.startTime <= 600)
 								{	var oldCoordinate = parseInt(((lastFingerTaped.coordinate_initial * BASE_TEN)%BASE_TEN));
 									var nowCoordinate = parseInt(((fingers[p].coordinate_initial * BASE_TEN)%BASE_TEN));
@@ -426,7 +407,6 @@ canvas.addEventListener("touchend", function(e)
 										{	console.log(UPDATE_INDEX);
 											updateEntity(entity, UPDATE_INDEX);
 										}
-										//console.log("double tap");
 									}
 								}
 							}
@@ -439,7 +419,6 @@ canvas.addEventListener("touchend", function(e)
 						var pointX = touches[i].clientX || touches[i].pageX;
 						var pointY = touches[i].clientY || touches[i].pageY;
 						
-						//AVERIGUAR TRIANGULO
 						if 	((fingers[p].drawing) && (fingers[p].interval_coordinate <= 0.01)
 							&& ((fingers[p].intervalExtremesX >= MIN_INTERVAL_EXTREMESX && fingers[p].intervalExtremesX <= MAX_INTERVAL_EXTREMESX) 
 							&& (fingers[p].intervalExtremesY >= MIN_INTERVAL_EXTREMESY && fingers[p].intervalExtremesY <= MAX_INTERVAL_EXTREMESY)
@@ -452,7 +431,6 @@ canvas.addEventListener("touchend", function(e)
 											fingers[p].minorX, fingers[p].minorY,
 											Math.atan2(pointX, pointY), "");
 								
-								//Não permitir criar entidade enquanto digita as coisas;
 								if(!fingerInEntities)
 								{	entities.push(newEntity);
 									lastEntityIndex = entities.length-1;
@@ -616,14 +594,6 @@ function updateEntity(entity,stateIndex)
 	}
 }
 
-function chooseUpdateEntity(entity){
-// {	var updateOption = document.getElementById("selectUpdate").onchange;
-// 	if (updateOption == 1)
-// 	{}
-// 	else
-// 	{}
-}
-
 function removeEntity(entity, finger)
 {	
 	var confirmationBox = document.getElementById("confirmationBox");
@@ -669,9 +639,9 @@ function isEntityOutOfDraw(entity)
 {	var sideColision, extremeColision;
 	sideColision, extremeColision = false;
 	
-	if (entity.minorX + ENTITIES_WIDTH >= canvasWidth || entity.minorX <= 0) <!-- COLIDIU X -->
+	if (entity.minorX + ENTITIES_WIDTH >= canvasWidth || entity.minorX <= 0) 
 		sideColision = true;
-	if (entity.minorY + ENTITIES_HEIGHT >= canvasHeight || entity.minorY <= 0) <!-- COLIDIU Y -->
+	if (entity.minorY + ENTITIES_HEIGHT >= canvasHeight || entity.minorY <= 0)
 		extremeColision = true;
 	
 	if (sideColision || extremeColision)
@@ -686,13 +656,13 @@ function detectFingerColisionEntity(finger,entity)
 {	var leftColision, rightColision, topColision,  bottomColision;
 	leftColision = rightColision = topColision = bottomColision = false;
 	
-	if (finger.pointX/*-MINIMAL_DISTANCEX_BETWEEN_ENTITIES*/ >= entity.minorX && finger.pointX/*-MINIMAL_DISTANCEX_BETWEEN_ENTITIES*/ <= entity.minorX + ENTITIES_WIDTH) <!-- COLIDIU X ESQUERDA-->
+	if (finger.pointX >= entity.minorX && finger.pointX <= entity.minorX + ENTITIES_WIDTH)
 		leftColision = true;
-	if (finger.pointX/*+MINIMAL_DISTANCEX_BETWEEN_ENTITIES*/ <= entity.minorX + ENTITIES_WIDTH && finger.pointX/*+MINIMAL_DISTANCEX_BETWEEN_ENTITIES*/ >= entity.minorX) <!-- COLIDIU X DIREITA-->
+	if (finger.pointX <= entity.minorX + ENTITIES_WIDTH && finger.pointX >= entity.minorX)
 		rightColision = true;
-	if (finger.pointY/*-MINIMAL_DISTANCEY_BETWEEN_ENTITIES*/ >= entity.minorY && finger.pointY/*-MINIMAL_DISTANCEY_BETWEEN_ENTITIES*/ <= entity.minorY + ENTITIES_HEIGHT) <!-- COLIDIU Y CIMA -->
+	if (finger.pointY >= entity.minorY && finger.pointY <= entity.minorY + ENTITIES_HEIGHT) 
 		topColision = true;
-	if (finger.pointY/*-MINIMAL_DISTANCEY_BETWEEN_ENTITIES*/ <= entity.minorY + ENTITIES_HEIGHT && finger.pointY/*-MINIMAL_DISTANCEY_BETWEEN_ENTITIES*/ >= entity.minorY) <!-- COLIDIU Y BAIXO -->
+	if (finger.pointY <= entity.minorY + ENTITIES_HEIGHT && finger.pointY >= entity.minorY) 
 		bottomColision = true;
 	
 	if ((rightColision || leftColision) && (topColision || bottomColision))
@@ -723,13 +693,13 @@ function detectEntityColision(entityA, entityB)
 {	var leftColision, rightColision, topColision,  bottomColision;
 	leftColision = rightColision = topColision = bottomColision = false;
 	
-	if (entityB.minorX + ENTITIES_WIDTH >= entityA.minorX && entityB.minorX + ENTITIES_WIDTH <= entityA.minorX + ENTITIES_WIDTH) <!-- COLIDIU X ESQUERDA-->
+	if (entityB.minorX + ENTITIES_WIDTH >= entityA.minorX && entityB.minorX + ENTITIES_WIDTH <= entityA.minorX + ENTITIES_WIDTH) 
 		leftColision = true;
-	if (entityB.minorX <= entityA.minorX + ENTITIES_WIDTH && entityB.minorX >= entityA.minorX) <!-- COLIDIU X DIREITA-->
+	if (entityB.minorX <= entityA.minorX + ENTITIES_WIDTH && entityB.minorX >= entityA.minorX)
 		rightColision = true;
-	if (entityB.minorY + ENTITIES_HEIGHT >= entityA.minorY && entityB.minorY + ENTITIES_HEIGHT <= entityA.minorY + ENTITIES_HEIGHT) <!-- COLIDIU Y CIMA -->
+	if (entityB.minorY + ENTITIES_HEIGHT >= entityA.minorY && entityB.minorY + ENTITIES_HEIGHT <= entityA.minorY + ENTITIES_HEIGHT) 
 		topColision = true;
-	if (entityB.minorY <= entityA.minorY + ENTITIES_HEIGHT && entityB.minorY >= entityA.minorY) <!-- COLIDIU Y BAIXO -->
+	if (entityB.minorY <= entityA.minorY + ENTITIES_HEIGHT && entityB.minorY >= entityA.minorY) 
 		bottomColision = true;
 	
 	if ( (rightColision || leftColision) && (topColision || bottomColision) )
@@ -796,7 +766,6 @@ function drawEntities()
 function clear()
 {	context.fillStyle = "white";
 	context.fillRect(0, 0, canvasWidth, canvasHeight);
-	//context.drawImage(img,(canvasWidth/2)-(img.width/2), (canvasHeight/2)-(img.height/2));
 	drawEntities();
 }
 
@@ -832,8 +801,6 @@ function strechScreen()
 	context.fillStyle = "white";
 	context.fillRect(0, 0, canvasWidth, canvasHeight);	
 	 
-	// PRE-LOAD LOGO
-	img.src = "teste.png";
 }
 
 // CORE CANVAS METHODS
