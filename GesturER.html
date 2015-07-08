@@ -1,4 +1,4 @@
-/*Copyright [2015] [VINICIUS MONTENEGRO SILVA]
+<!--Copyright [2015] [VINICIUS MONTENEGRO SILVA]
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -10,7 +10,7 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License.*/
+limitations under the License.-->
 <html>
 	<head>
 		<meta charset="utf-8"/>
@@ -106,6 +106,11 @@ const MIN_INTERVAL_EXTREMESX = 60;
 const MIN_INTERVAL_EXTREMESY = 80;
 const MAX_INTERVAL_EXTREMESY = 200;
 const VARIATION_LIMIT = 50;
+
+const ONE_FINGER = 1;
+const TWO_FINGERS = 2;
+const THREE_FINGERS = 3;
+const FOUR_FINGERS = 4;
 						
 // CORE TOUCH GLOBAL VARIABLES
 var fingers = [];
@@ -120,6 +125,7 @@ var	entities = [];
 
 // CORE ENTITIES GLOBAL VARIABLES
 var lastRelationshipIndex = 0;
+var lastRelationshipIdentifier = -1;
 var temporaryRelationship = -1;
 var	relationships = [];
 
@@ -139,6 +145,7 @@ const BODY_NODE = document.getElementsByTagName('body')[0];
 const STRECH_WINDOW_PERCENTAGE = 35;
 const PROPORTIONAL_PERCENTAGE_WIDTH_INPUT = 0.2;
 const PROPORTIONAL_PERCENTAGE_HEIGHT_INPUT = 0.2;
+const PENCIL_RADIUS = 5;
 
 // WINDOW HTML COMPONENTS VARIABLES
 var windowWidth;
@@ -223,6 +230,8 @@ function Relationship()
 	
 	var cardinalityA;
 	var cardinalityB;
+	
+	var active;
 }
 
 Relationship.prototype.setID = function (id)
@@ -243,6 +252,10 @@ Relationship.prototype.setCardinalityA = function (cardinalityA)
 
 Relationship.prototype.setCardinalityB = function (cardinalityB)
 {	this.cardinalityB = cardinalityB;
+}
+
+Relationship.prototype.setActive = function (active)
+{	this.active = active;
 }
 
 function searchFinger(id)
@@ -299,171 +312,149 @@ canvas.addEventListener("touchend", function(e)
 	var oldCoordinated;
 	var distance;
 	
-	if(fingers.length == 2 && twoFingersInitialDistance != null)
-	{	twoFingersInitialDistance = null;
-		twoFingersDistance = null;
-		distance = null;
-		fingers.splice(0,2);
-		clear();					
-	}
-	else
-	{	if (entities.length >= 2 && fingers.length <= 4)
-		{	if (fingers.length == 4)
-			{	if (temporaryRelationship == -1) 
-				{	temporaryRelationship =	new Relationship();
-				}	
-				alert(fingers.length+" TESTE");
-				for (var i = 0; i < touches.length; i++)
-				{	var p = searchFinger(touches[i].identifier);
-					var entidadeRelacao = colisionWithFingerAndEntity(fingers[p]);
-					if (entidadeRelacao != NEGATIVE_INDEX)
-					{	if(!fingers[p].drawing)
-						{	relationships[lastRelationshipIndex].setEntityA(entidadeRelacao);
-							relationships[lastRelationshipIndex].setCardinalityA('N');
-							relationships[lastRelationshipIndex].setCardinalityB('N');
+	if(fingers.length == ONE_FINGER)
+	{	for (var i = 0; i < touches.length; i++)
+		{	var p = searchFinger(touches[i].identifier);
+			var entityRelationship = colisionWithFingerAndEntity(fingers[p]);
+			if (lastRelationshipIdentifier != -1)
+			{	if (entityRelationship != NEGATIVE_INDEX)
+				{	if(!fingers[p].drawing)
+					{	//1 p 1
+						if (relationships[lastRelationshipIdentifier].entityA != entityRelationship.id)
+						{	relationships[lastRelationshipIndex].setEntityB(entityRelationship.id);
+							relationships[lastRelationshipIndex].setCardinalityB('1');
+							relationships[lastRelationshipIndex].setActive(true);
 						}
-					}
-					if(p != NEGATIVE_INDEX)
-					{	lastFingerEnd = fingers[p];
-						fingers.splice(p, 1);
+						else
+						{	relationships.splice(lastRelationshipIndex, 1);	
+						}
 					}
 				}
 			}
 			else
-				if (fingers.length == 3)
-				{	if (temporaryRelationship == -1) 
-					{	temporaryRelationship =	new Relationship();
-					}
-					alert(fingers.length+" TESTE");
-					for (var i = 0; i < touches.length; i++)
-					{	var p = searchFinger(touches[i].identifier);
-						if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
-						{	if(!fingers[p].drawing)
-								fingerInEntities = true;
+			{	var timeNow = (new Date).getTime(); 
+				var intervalTime = timeNow-fingers[p].startTime;
+
+				if (intervalTime <= MAX_TAP_PRESS_TIME)
+				{	if(lastFingerTaped != null)
+					{	if (fingers[p].startTime-lastFingerTaped.startTime >= VARIATION_LIMIT && fingers[p].startTime-lastFingerTaped.startTime <= 600)
+						{	var oldCoordinate = parseInt(((lastFingerTaped.coordinate_initial * BASE_TEN)%BASE_TEN));
+							var nowCoordinate = parseInt(((fingers[p].coordinate_initial * BASE_TEN)%BASE_TEN));
+							
+							if (nowCoordinate == oldCoordinate || (nowCoordinate+LIMIT_SPACE_COORDINATE) == oldCoordinate || (nowCoordinate-LIMIT_SPACE_COORDINATE) == oldCoordinate )
+							{	var entity = dragColidesEntity(fingers[p]);
+								if (entity != NEGATIVE_INDEX)
+								{	updateEntity(entity, UPDATE_INDEX);
+								}
+							}
 						}
-						if(p != NEGATIVE_INDEX)
-						{	lastFingerEnd = fingers[p];
-							fingers.splice(p, 1);
-						}
 					}
+					lastFingerTaped = fingers[p];
 				}
-				else
-					if (fingers.length == 2)
-					{	if (temporaryRelationship == -1) 
-						{	temporaryRelationship =	new Relationship();
-						}
-						alert(fingers.length+" TESTE");
-						for (var i = 0; i < touches.length; i++)
-						{	var p = searchFinger(touches[i].identifier);
-							if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
-							{	if(!fingers[p].drawing)
-									fingerInEntities = true;
-							}
-							if(p != NEGATIVE_INDEX)
-							{	lastFingerEnd = fingers[p];
-								fingers.splice(p, 1);
-							}
-						}
-					}
-					else
-						if(fingers.length == 1)
-						{	alert(fingers.length+" TESTE");
-							for (var i = 0; i < touches.length; i++)
-							{	var p = searchFinger(touches[i].identifier);
-								if (colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
-								{	if(!fingers[p].drawing)
-										fingerInEntities = true;
-								}
-								if(p != NEGATIVE_INDEX)
-								{	lastFingerEnd = fingers[p];
-									fingers.splice(p, 1);
-								}
-							}
-							if (temporaryRelationship != -1)
-							{	relationships.push(temporaryRelationship);
-								lastRelationshipIndex = relationships.length-1;
-								temporaryRelationship = -1;
-							}
-						}
+				
+				fingers[p].intervalExtremesX = fingers[p].majorX - fingers[p].minorX;
+				fingers[p].intervalExtremesY = fingers[p].majorY - fingers[p].minorY;
+				
+				var pointX = touches[i].clientX || touches[i].pageX;
+				var pointY = touches[i].clientY || touches[i].pageY;
+						
+				//AVERIGUAR TRIANGULO
+				if (isNewEntity(fingers[p]))
+				{	createEntity(fingers[p],pointX,pointY);
+				}
+			}
+			if(p != NEGATIVE_INDEX)
+			{	lastFingerEnd = fingers[p];
+				fingers.splice(p, ONE_FINGER);
+			}
 		}
-		else
+		lastRelationshipIdentifier = NEGATIVE_INDEX;
+	}
+	else
+		if (fingers.length == FOUR_FINGERS)
 		{	for (var i = 0; i < touches.length; i++)
 			{	var p = searchFinger(touches[i].identifier);
-				
-				if(p != NEGATIVE_INDEX)
-				{	var timeNow = (new Date).getTime(); 
-					var intervalTime = timeNow-fingers[p].startTime;
-						
-					if (touches.length == 1)
-					{	if (intervalTime <= MAX_TAP_PRESS_TIME)
-						{	if(lastFingerTaped != null)
-							{	if (fingers[p].startTime-lastFingerTaped.startTime >= VARIATION_LIMIT && fingers[p].startTime-lastFingerTaped.startTime <= 600)
-								{	var oldCoordinate = parseInt(((lastFingerTaped.coordinate_initial * BASE_TEN)%BASE_TEN));
-									var nowCoordinate = parseInt(((fingers[p].coordinate_initial * BASE_TEN)%BASE_TEN));
-									
-									if ( nowCoordinate == oldCoordinate || (nowCoordinate+LIMIT_SPACE_COORDINATE) == oldCoordinate || (nowCoordinate-LIMIT_SPACE_COORDINATE) == oldCoordinate )
-									{	var entity = dragColidesEntity(fingers[p]);
-										if (entity != NEGATIVE_INDEX)
-										{	console.log(UPDATE_INDEX);
-											updateEntity(entity, UPDATE_INDEX);
-										}
-									}
-								}
-							}
-							lastFingerTaped = fingers[p];
-						}
-						
-						fingers[p].intervalExtremesX = fingers[p].majorX - fingers[p].minorX;
-						fingers[p].intervalExtremesY = fingers[p].majorY - fingers[p].minorY;
-						
-						var pointX = touches[i].clientX || touches[i].pageX;
-						var pointY = touches[i].clientY || touches[i].pageY;
-						
-						if 	((fingers[p].drawing) && (fingers[p].interval_coordinate <= 0.01)
-							&& ((fingers[p].intervalExtremesX >= MIN_INTERVAL_EXTREMESX && fingers[p].intervalExtremesX <= MAX_INTERVAL_EXTREMESX) 
-							&& (fingers[p].intervalExtremesY >= MIN_INTERVAL_EXTREMESY && fingers[p].intervalExtremesY <= MAX_INTERVAL_EXTREMESY)
-							&& (fingers[p].variationOfX <= VARIATION_LIMIT && fingers[p].variationOfY <= VARIATION_LIMIT)))	
-							{	
-								var actualEntityIdentifier = entities.length;
-									
-								var newEntity = new Entity(entities.length, pointX, pointY,
-											pointX, pointY, 0, 0,
-											fingers[p].minorX, fingers[p].minorY,
-											Math.atan2(pointX, pointY), "");
-								
-								if(!fingerInEntities)
-								{	entities.push(newEntity);
-									lastEntityIndex = entities.length-1;
-									
-									updateEntity(lastEntityIndex, CREATE_INDEX);
-									
-									entities[lastEntityIndex].attributes.push(new Attribute(touches[i].identifier*BASE_TEN, 
-											actualEntityIdentifier, "", "primary", (entities[lastEntityIndex].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT)), 
-											entities[lastEntityIndex].minorY-(ENTITIES_HEIGHT*TWENTY_PERCENT)));
-								}
-								else 
-								{	alert("You cannot draw an Entity over or near other!");
-								}
-							}
+				var entityRelationship = colisionWithFingerAndEntity(fingers[p]);
+				if (entityRelationship != NEGATIVE_INDEX)
+				{	if(!fingers[p].drawing)
+					{	relationships.push(new Relationship());
+						lastRelationshipIndex = relationships.length-1;
+						relationships[lastRelationshipIndex].setActive(false);
+						relationships[lastRelationshipIndex].setEntityA(entityRelationship.id);
+						relationships[lastRelationshipIndex].setCardinalityA('N');
+						relationships[lastRelationshipIndex].setCardinalityB('N');
+						lastRelationshipIdentifier = lastRelationshipIndex;
 					}
-					fingers.splice(p, 1);
 				}
 			}
 		}
-		clear();					
+		else
+			if (fingers.length == THREE_FINGERS)
+			{	alert(fingers.length+" TESTE");
+				for (var i = 0; i < touches.length; i++)
+				{	var p = searchFinger(touches[i].identifier);
+					var entityRelationship = colisionWithFingerAndEntity(fingers[p]);
+					if (entityRelationship != NEGATIVE_INDEX)
+					{	if(!fingers[p].drawing)
+						{	
+							if (lastRelationshipIdentifier != -1)
+							{	if (relationships[lastRelationshipIdentifier].entityA.id != entityRelationship.id)
+								{	relationships[lastRelationshipIdentifier].setEntityB = entityRelationship;
+								}
+							}
+							else
+							{	relationships.push(new Relationship());
+								lastRelationshipIndex = relationships.length-1;
+								
+								relationships[lastRelationshipIndex].setEntityA(entityRelationship.id);
+								relationships[lastRelationshipIndex].setCardinalityA('1');
+								lastRelationshipIdentifier = lastRelationshipIndex;								
+							}
+							fingerInEntities = true;
+						}
+					}
+				}
+			}
+			else
+				if (fingers.length == TWO_FINGERS)
+				{	for (var i = 0; i < touches.length; i++)
+					{	var p = searchFinger(touches[i].identifier);
+						var entityRelationship = colisionWithFingerAndEntity(fingers[p]);
+						if (entityRelationship != NEGATIVE_INDEX)
+						{	if(!fingers[p].drawing)
+							{	if (lastRelationshipIdentifier != -1)
+								{	if (relationships[lastRelationshipIdentifier].entityA.id == entityRelationship.id)
+									{	if(relationships[lastRelationshipIdentifier].cardinalityA == '1')
+										{	relationships[lastRelationshipIdentifier].cardinalityA('N');
+										}
+									}
+									else
+									{	relationships[lastRelationshipIdentifier].setEntityB(entityRelationship.id);
+										relationships[lastRelationshipIdentifier].setCardinalityB('1');
+									} 
+								}
+								else
+								{	relationships.push(new Relationship());
+									lastRelationshipIdentifier = lastRelationshipIndex = relationships.length-1;
+									relationships[lastRelationshipIndex].setActive(false);
+									relationships[lastRelationshipIndex].setEntityA(entityRelationship.id);
+									relationships[lastRelationshipIndex].setCardinalityA('1');
+								}
+							}
+						}
+					}
+				}
+	if(p != NEGATIVE_INDEX)
+	{	lastFingerEnd = fingers[p];
+		fingers.splice(p, ONE_FINGER);
 	}
+	clear();					
 	fingerInEntities = false;
 }, false);
 
 canvas.addEventListener("touchmove", function(e)
 {	e.preventDefault();
 	var touches = e.changedTouches;
-	var flagRelationship = false;
-					
-	if (touches.length == 4)
-		flagRelationship = true;
-	if (touches.length > 4) 
-		fingerInEntities = false;
 	
 	for (var i = 0; i < touches.length; i++)
 	{	var p = searchFinger(touches[i].identifier);
@@ -474,8 +465,8 @@ canvas.addEventListener("touchmove", function(e)
 			if(colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
 				fingerInEntities = true;
 				
-			var pointX = touches[i].clientX || touches[i].pageX;
-			var pointY = touches[i].clientY || touches[i].pageY;
+			var pointX = touches[i].clientX;// || touches[i].pageX;
+			var pointY = touches[i].clientY;// || touches[i].pageY;
 						
 			fingers[p].pointX = pointX;
 			fingers[p].pointY = pointY;
@@ -540,13 +531,51 @@ canvas.addEventListener("touchmove", function(e)
 }, false);
 
 // TOUCH METHODS
-function isDragEntity(finger,intervalTime){
-	var draggedEntity = dragColidesEntity(finger);
-	if(!(finger.drawing) && intervalTime > VARIATION_LIMIT && (draggedEntity != NEGATIVE_INDEX)) return draggedEntity;
-	else return NEGATIVE_INDEX;
+function isDragEntity(finger,intervalTime)
+{	var draggedEntity = dragColidesEntity(finger);
+	
+	if(!(finger.drawing) && intervalTime > VARIATION_LIMIT && (draggedEntity != NEGATIVE_INDEX)) 
+	{	return draggedEntity;
+	}
+	else 
+	{	return NEGATIVE_INDEX;
+	}
 }
 
-// WINDOW HTML AND CANVAS EXECUTION METHODS
+// ENTITIES METHODS
+function isNewEntity(finger)
+{	if ((finger.drawing) && (finger.interval_coordinate <= 0.01)
+	&& ((finger.intervalExtremesX >= MIN_INTERVAL_EXTREMESX && finger.intervalExtremesX <= MAX_INTERVAL_EXTREMESX) 
+	&& (finger.intervalExtremesY >= MIN_INTERVAL_EXTREMESY && finger.intervalExtremesY <= MAX_INTERVAL_EXTREMESY)
+	&& (finger.variationOfX <= VARIATION_LIMIT && finger.variationOfY <= VARIATION_LIMIT))) 
+	{	return true;
+	}	
+	return false;
+}
+
+function createEntity(finger, pointX, pointY)
+{	
+	var actualEntityIdentifier = entities.length;
+	var newEntity = new Entity(entities.length, pointX, pointY,
+				pointX, pointY, 0, 0,
+				finger.minorX, finger.minorY,
+				Math.atan2(pointX, pointY), "");
+	
+	if(!fingerInEntities)
+	{	entities.push(newEntity);
+		lastEntityIndex = entities.length-1;
+
+		updateEntity(lastEntityIndex, CREATE_INDEX);
+		
+		entities[lastEntityIndex].attributes.push(new Attribute(actualEntityIdentifier*BASE_TEN, 
+				actualEntityIdentifier, "", "primary", (entities[lastEntityIndex].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT)), 
+				entities[lastEntityIndex].minorY-(ENTITIES_HEIGHT*TWENTY_PERCENT)));
+	}
+	else 
+	{	alert("You cannot draw an Entity over or near other!");
+	}
+}
+
 function updateEntity(entity,stateIndex)
 {
 	var inputBox = document.getElementById("inputBox");
@@ -639,7 +668,7 @@ function isEntityOutOfDraw(entity)
 {	var sideColision, extremeColision;
 	sideColision, extremeColision = false;
 	
-	if (entity.minorX + ENTITIES_WIDTH >= canvasWidth || entity.minorX <= 0) 
+	if (entity.minorX + ENTITIES_WIDTH >= canvasWidth || entity.minorX <= 0)
 		sideColision = true;
 	if (entity.minorY + ENTITIES_HEIGHT >= canvasHeight || entity.minorY <= 0)
 		extremeColision = true;
@@ -656,11 +685,11 @@ function detectFingerColisionEntity(finger,entity)
 {	var leftColision, rightColision, topColision,  bottomColision;
 	leftColision = rightColision = topColision = bottomColision = false;
 	
-	if (finger.pointX >= entity.minorX && finger.pointX <= entity.minorX + ENTITIES_WIDTH)
+	if (finger.pointX >= entity.minorX && finger.pointX <= entity.minorX + ENTITIES_WIDTH) 
 		leftColision = true;
-	if (finger.pointX <= entity.minorX + ENTITIES_WIDTH && finger.pointX >= entity.minorX)
+	if (finger.pointX <= entity.minorX + ENTITIES_WIDTH && finger.pointX >= entity.minorX) 
 		rightColision = true;
-	if (finger.pointY >= entity.minorY && finger.pointY <= entity.minorY + ENTITIES_HEIGHT) 
+	if (finger.pointY >= entity.minorY && finger.pointY <= entity.minorY + ENTITIES_HEIGHT)
 		topColision = true;
 	if (finger.pointY <= entity.minorY + ENTITIES_HEIGHT && finger.pointY >= entity.minorY) 
 		bottomColision = true;
@@ -695,11 +724,11 @@ function detectEntityColision(entityA, entityB)
 	
 	if (entityB.minorX + ENTITIES_WIDTH >= entityA.minorX && entityB.minorX + ENTITIES_WIDTH <= entityA.minorX + ENTITIES_WIDTH) 
 		leftColision = true;
-	if (entityB.minorX <= entityA.minorX + ENTITIES_WIDTH && entityB.minorX >= entityA.minorX)
+	if (entityB.minorX <= entityA.minorX + ENTITIES_WIDTH && entityB.minorX >= entityA.minorX) 
 		rightColision = true;
 	if (entityB.minorY + ENTITIES_HEIGHT >= entityA.minorY && entityB.minorY + ENTITIES_HEIGHT <= entityA.minorY + ENTITIES_HEIGHT) 
 		topColision = true;
-	if (entityB.minorY <= entityA.minorY + ENTITIES_HEIGHT && entityB.minorY >= entityA.minorY) 
+	if (entityB.minorY <= entityA.minorY + ENTITIES_HEIGHT && entityB.minorY >= entityA.minorY)
 		bottomColision = true;
 	
 	if ( (rightColision || leftColision) && (topColision || bottomColision) )
@@ -724,9 +753,38 @@ function drawPencil()
 {	context.fillStyle = "gray";
 	for (var i = 0; i < fingers.length; i++) 
 	{	context.beginPath();
-		context.arc(fingers[i].pointX, fingers[i].pointY, 5, 0, DOUBLE*Math.PI, true);
+		context.arc(fingers[i].pointX, fingers[i].pointY, PENCIL_RADIUS, 0, DOUBLE*Math.PI, true);
 		context.fill();
 		context.stroke();
+	}
+}
+
+function drawRelationships()
+{	context.fillStyle = "black";
+	for (var i = 0; i < relationships.length; i++) 
+	{	if(relationships[i].active != false)
+		{	context.beginPath();
+		
+			var minorXofEntityA = entities[relationships[i].entityA].minorX; 
+			var minorXofEntityB = entities[relationships[i].entityB].minorX; 
+			
+			if (minorXofEntityA < minorXofEntityB)
+			{	context.moveTo(minorXofEntityB,entities[parseInt(relationships[i].entityB)].minorY);
+				context.lineTo(minorXofEntityA,entities[parseInt(relationships[i].entityA)].minorY);
+			}
+			else
+			{	context.moveTo(minorXofEntityA,entities[parseInt(relationships[i].entityA)].minorY);
+				context.lineTo(minorXofEntityB,entities[parseInt(relationships[i].entityB)].minorY);
+			}
+			
+			context.stroke(); 
+		
+			// draw cardinality
+			context.font="18px Arial";
+			context.fillStyle="#008B00";
+			context.fillText(relationships[i].cardinalityA,entities[parseInt(relationships[i].entityA)].minorX-12,entities[parseInt(relationships[i].entityA)].minorY+10);
+			context.fillText(relationships[i].cardinalityB,entities[parseInt(relationships[i].entityB)].minorX-12,entities[parseInt(relationships[i].entityB)].minorY+10);
+		}
 	}
 }
 
@@ -761,6 +819,7 @@ function drawEntities()
 		context.fillText(entities[i].name,entities[i].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT),entities[i].minorY+(ENTITIES_HEIGHT/HALF));
 		drawAttributes(entities[i]);
 	}
+	drawRelationships();
 }
 
 function clear()
@@ -800,7 +859,6 @@ function strechScreen()
 	canvas.height = canvasHeight
 	context.fillStyle = "white";
 	context.fillRect(0, 0, canvasWidth, canvasHeight);	
-	 
 }
 
 // CORE CANVAS METHODS
