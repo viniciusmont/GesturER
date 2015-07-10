@@ -79,8 +79,8 @@ limitations under the License.-->
 		<div id="confirmationBox">
 			<center>
 				<label id="labelGenericConfirmation"></label><br>
-				<input type="button" value="Sim" id="genericConfirmButton">
-				<input type="button" value="Não" id="genericCancelButton"></br>
+				<input type="button" value="Yes" id="genericConfirmButton">
+				<input type="button" value="No" id="genericCancelButton"></br>
 			</center>
 		</div>
 	</body>
@@ -91,6 +91,18 @@ var context = canvas.getContext("2d");
 var fps = 40;
 var timer1;
 var img = new Image();
+
+// CORE NODES OF HTML 
+var confirmationBox = document.getElementById("confirmationBox");
+var confirmationBoxLabel = document.getElementById("labelGenericConfirmation");
+var confirmationOkButton = document.getElementById("genericConfirmButton");
+var confirmationCancelButton = document.getElementById("genericCancelButton");
+var confirmationValue = document.getElementById("genericConfirmValue");
+
+var inputBox = document.getElementById("inputBox");
+var inputBoxLabel = document.getElementById("labelGenericInputText");
+var inputBoxInput = document.getElementById("genericInputText");
+var inputBoxButton = document.getElementById("genericInputTextSubmit");
 
 // CORE TOUCH CONSTANT'S
 const LIMIT_SPACE_COORDINATE = 2;
@@ -232,6 +244,7 @@ function Relationship()
 	var cardinalityB;
 	
 	var active;
+	var cardinality;
 }
 
 Relationship.prototype.setID = function (id)
@@ -256,6 +269,10 @@ Relationship.prototype.setCardinalityB = function (cardinalityB)
 
 Relationship.prototype.setActive = function (active)
 {	this.active = active;
+}
+
+Relationship.prototype.setCardinality = function (cardinality)
+{	this.cardinality = cardinality;
 }
 
 function searchFinger(id)
@@ -308,9 +325,6 @@ canvas.addEventListener("touchstart", function(e)
 canvas.addEventListener("touchend", function(e)
 {	e.preventDefault();
 	var touches = e.changedTouches;
-	var currentCoordinated;
-	var oldCoordinated;
-	var distance;
 	
 	if(fingers.length == ONE_FINGER)
 	{	for (var i = 0; i < touches.length; i++)
@@ -319,15 +333,35 @@ canvas.addEventListener("touchend", function(e)
 			if (lastRelationshipIdentifier != -1)
 			{	if (entityRelationship != NEGATIVE_INDEX)
 				{	if(!fingers[p].drawing)
-					{	//1 p 1
-						if (relationships[lastRelationshipIdentifier].entityA != entityRelationship.id)
+					{	if (relationships[lastRelationshipIdentifier].entityA != entityRelationship.id)
 						{	relationships[lastRelationshipIndex].setEntityB(entityRelationship.id);
-							relationships[lastRelationshipIndex].setCardinalityB('1');
-							relationships[lastRelationshipIndex].setActive(true);
+							
+							if(relationships[lastRelationshipIdentifier].cardinality == "n1")
+							{	if(relationships[lastRelationshipIdentifier].cardinalityA == 'N')
+								{	relationships[lastRelationshipIdentifier].setCardinalityB('1');
+								}
+								else
+								{	relationships[lastRelationshipIndex].setCardinalityB('N');
+								}
+							}
+							else
+							{	if(relationships[lastRelationshipIdentifier].cardinality == "nn")
+									relationships[lastRelationshipIndex].setCardinalityB('N');
+								else
+									relationships[lastRelationshipIndex].setCardinalityB('1');
+							}
 						}
 						else
-						{	relationships.splice(lastRelationshipIndex, 1);	
+						{	if(relationships[lastRelationshipIdentifier].cardinality == "n1")
+							{	relationships[lastRelationshipIndex].setCardinalityA('N');
+							}
+							else
+								if(relationships[lastRelationshipIdentifier].cardinality == "nn")
+								{	relationships[lastRelationshipIdentifier].setEntityB(entityRelationship.id);
+									relationships[lastRelationshipIdentifier].setCardinalityB('N');
+								}
 						}
+						relationships[lastRelationshipIndex].setActive(true);
 					}
 				}
 			}
@@ -378,37 +412,36 @@ canvas.addEventListener("touchend", function(e)
 				if (entityRelationship != NEGATIVE_INDEX)
 				{	if(!fingers[p].drawing)
 					{	relationships.push(new Relationship());
-						lastRelationshipIndex = relationships.length-1;
+						lastRelationshipIdentifier = lastRelationshipIndex = relationships.length-1;
+						relationships[lastRelationshipIndex].setCardinality("nn");
 						relationships[lastRelationshipIndex].setActive(false);
 						relationships[lastRelationshipIndex].setEntityA(entityRelationship.id);
 						relationships[lastRelationshipIndex].setCardinalityA('N');
-						relationships[lastRelationshipIndex].setCardinalityB('N');
-						lastRelationshipIdentifier = lastRelationshipIndex;
 					}
 				}
 			}
 		}
 		else
 			if (fingers.length == THREE_FINGERS)
-			{	alert(fingers.length+" TESTE");
-				for (var i = 0; i < touches.length; i++)
+			{	for (var i = 0; i < touches.length; i++)
 				{	var p = searchFinger(touches[i].identifier);
 					var entityRelationship = colisionWithFingerAndEntity(fingers[p]);
 					if (entityRelationship != NEGATIVE_INDEX)
 					{	if(!fingers[p].drawing)
-						{	
-							if (lastRelationshipIdentifier != -1)
-							{	if (relationships[lastRelationshipIdentifier].entityA.id != entityRelationship.id)
-								{	relationships[lastRelationshipIdentifier].setEntityB = entityRelationship;
+						{	if (lastRelationshipIdentifier != -1)
+							{	if (relationships[lastRelationshipIndex].entityA != entityRelationship.id)
+								{	relationships[lastRelationshipIndex].setEntityB(entityRelationship);
+									relationships[lastRelationshipIndex].setCardinalityB('N');
+									relationships[lastRelationshipIndex].setActive(true);
 								}
 							}
 							else
 							{	relationships.push(new Relationship());
-								lastRelationshipIndex = relationships.length-1;
-								
+								lastRelationshipIdentifier = lastRelationshipIndex = relationships.length-1;
+								relationships[lastRelationshipIndex].setCardinality("n1");
+								relationships[lastRelationshipIndex].setActive(false);
 								relationships[lastRelationshipIndex].setEntityA(entityRelationship.id);
-								relationships[lastRelationshipIndex].setCardinalityA('1');
-								lastRelationshipIdentifier = lastRelationshipIndex;								
+								relationships[lastRelationshipIndex].setCardinalityA("1");
 							}
 							fingerInEntities = true;
 						}
@@ -423,19 +456,29 @@ canvas.addEventListener("touchend", function(e)
 						if (entityRelationship != NEGATIVE_INDEX)
 						{	if(!fingers[p].drawing)
 							{	if (lastRelationshipIdentifier != -1)
-								{	if (relationships[lastRelationshipIdentifier].entityA.id == entityRelationship.id)
-									{	if(relationships[lastRelationshipIdentifier].cardinalityA == '1')
-										{	relationships[lastRelationshipIdentifier].cardinalityA('N');
+								{	if(relationships[lastRelationshipIdentifier].cardinality != "nn")
+									{   if (relationships[lastRelationshipIdentifier].entityA == entityRelationship.id)
+										{	relationships[lastRelationshipIdentifier].setCardinalityA('N');
 										}
+										else
+										{	relationships[lastRelationshipIndex].setEntityB(entityRelationship.id);
+											relationships[lastRelationshipIndex].setCardinalityB('1');
+										} 
 									}
 									else
-									{	relationships[lastRelationshipIdentifier].setEntityB(entityRelationship.id);
-										relationships[lastRelationshipIdentifier].setCardinalityB('1');
-									} 
+									{	if (!relationships[lastRelationshipIdentifier].entityB)
+										{	if (relationships[lastRelationshipIdentifier].entityA != entityRelationship.id)
+											{	relationships[lastRelationshipIndex].setEntityB(entityRelationship.id);
+												relationships[lastRelationshipIndex].setCardinalityB('N');
+											}
+										}
+									}
 								}
 								else
 								{	relationships.push(new Relationship());
 									lastRelationshipIdentifier = lastRelationshipIndex = relationships.length-1;
+									
+									relationships[lastRelationshipIndex].setCardinality("11");
 									relationships[lastRelationshipIndex].setActive(false);
 									relationships[lastRelationshipIndex].setEntityA(entityRelationship.id);
 									relationships[lastRelationshipIndex].setCardinalityA('1');
@@ -465,8 +508,8 @@ canvas.addEventListener("touchmove", function(e)
 			if(colisionWithFingerAndEntity(fingers[p]) != NEGATIVE_INDEX)
 				fingerInEntities = true;
 				
-			var pointX = touches[i].clientX;// || touches[i].pageX;
-			var pointY = touches[i].clientY;// || touches[i].pageY;
+			var pointX = touches[i].clientX;
+			var pointY = touches[i].clientY;
 						
 			fingers[p].pointX = pointX;
 			fingers[p].pointY = pointY;
@@ -510,7 +553,7 @@ canvas.addEventListener("touchmove", function(e)
 					entities[draggedEntity].minorY = (fingers[p].pointY+fingers[p].spaceOfMinorEntityYAndYi);
 						
 					entities[draggedEntity].attributes[FIRST_INDEX].pointX = entities[draggedEntity].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT);
-					entities[draggedEntity].attributes[FIRST_INDEX].pointY = entities[draggedEntity].minorY-20;
+					entities[draggedEntity].attributes[FIRST_INDEX].pointY = entities[draggedEntity].minorY-(BASE_TEN*HALF);
 					fingerInEntities = false;
 					
 					//REMOVE TESTS
@@ -543,6 +586,23 @@ function isDragEntity(finger,intervalTime)
 }
 
 // ENTITIES METHODS
+function returnEntityLastPosition(entity,finger)
+{	entities[entity].minorX = (finger.pointXi+finger.spaceOfMinorEntityXAndXi);
+	entities[entity].minorY = (finger.pointYi+finger.spaceOfMinorEntityYAndYi);
+		
+	entities[entity].attributes[FIRST_INDEX].pointX = entities[entity].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT);
+	entities[entity].attributes[FIRST_INDEX].pointY = entities[entity].minorY-(BASE_TEN*HALF);
+	fingerInEntities = false;				
+}
+
+function entityInRelationship(entity) 
+{	for (var i = 0; i < relationships.length; i++)
+	{	if (relationships[i].entityA == entity || relationships[i].entityB == entity)
+			return true;
+	}
+	return false;
+}
+
 function isNewEntity(finger)
 {	if ((finger.drawing) && (finger.interval_coordinate <= 0.01)
 	&& ((finger.intervalExtremesX >= MIN_INTERVAL_EXTREMESX && finger.intervalExtremesX <= MAX_INTERVAL_EXTREMESX) 
@@ -554,8 +614,7 @@ function isNewEntity(finger)
 }
 
 function createEntity(finger, pointX, pointY)
-{	
-	var actualEntityIdentifier = entities.length;
+{	var actualEntityIdentifier = entities.length;
 	var newEntity = new Entity(entities.length, pointX, pointY,
 				pointX, pointY, 0, 0,
 				finger.minorX, finger.minorY,
@@ -572,95 +631,112 @@ function createEntity(finger, pointX, pointY)
 				entities[lastEntityIndex].minorY-(ENTITIES_HEIGHT*TWENTY_PERCENT)));
 	}
 	else 
-	{	alert("You cannot draw an Entity over or near other!");
+	{	message = "<h3>[- Alert Information -]</h3>You cannot draw an Entity over or near other!";
+		confirmationBoxGenerate(message);
+		
+		confirmationOkButton.value = "Ok";
+		confirmationCancelButton.style.display = "none";
+
+		confirmationOkButton.onclick = function () {
+			confirmationBox.style.display = "none";
+			confirmationCancelButton.style.display = "inline";
+			confirmationOkButton.value = "Yes";
+			clear();
+		}
 	}
 }
 
 function updateEntity(entity,stateIndex)
-{
-	var inputBox = document.getElementById("inputBox");
-	var inputBoxLabel = document.getElementById("labelGenericInputText");
-	var inputBoxInput = document.getElementById("genericInputText");
-	var inputBoxButton = document.getElementById("genericInputTextSubmit");
+{	InputBoxGenerate();
+	var stateText = "";
+	
+	if (stateIndex == 0)
+	{	stateText = "<h3>[- New Entity -]</h3> ";
+	}
+	else
+	{	stateText = "<h3>[- Update Entity -]</h3> ";
+	}
+	
+	inputBoxLabel.innerHTML = stateText+"Enter entity name:";
+	inputBoxButton.onclick = function () {
+		entities[entity].name = inputBoxInput.value;
+		inputBoxInput.value = "";
+		inputBoxLabel.innerHTML = stateText+"Enter the name of identifier attribute:";
+		inputBoxInput.focus();
+		clear();
+		inputBoxButton.onclick = function () {
+			entities[entity].attributes[FIRST_INDEX].name = inputBoxInput.value;
+			inputBoxInput.value = "";
+			inputBox.style.display = "none";
+			clear();
+		}
+	}
+}
 
-	inputBox.style.width = canvasWidth*PROPORTIONAL_PERCENTAGE_WIDTH_INPUT;
+function InputBoxGenerate()
+{	inputBox.style.width = canvasWidth*PROPORTIONAL_PERCENTAGE_WIDTH_INPUT;
 	inputBox.style.height = canvasHeight*PROPORTIONAL_PERCENTAGE_HEIGHT_INPUT;
 
-	var tempInputWidth = inputBox.style.width.substr(0,inputBox.style.width.indexOf('p')-2);
-	var tempInputHeight = inputBox.style.height.substr(0,inputBox.style.height.indexOf('p')-2);
+	var tempInputWidth = inputBox.style.width.substr(0,inputBox.style.width.indexOf('p')-HALF);
+	var tempInputHeight = inputBox.style.height.substr(0,inputBox.style.height.indexOf('p')-HALF);
 
 	inputBox.style.left = ((canvasWidth/HALF)-(tempInputWidth/HALF))+"px";
 	inputBox.style.top = ((canvasHeight/HALF)-(tempInputHeight/HALF))+"px";
 
 	inputBox.style.display = "block";
-	inputBoxInput.focus();
-	
-	if (stateIndex == 0)
-	{	inputBoxLabel.innerHTML = "<h3>[- New Entity -]</h3> <br> Enter entity name:";
-		inputBoxButton.onclick = function () {
-			entities[entity].name = inputBoxInput.value;
-			inputBoxInput.value = "";
-			inputBoxLabel.innerHTML = "<h3>[- New Entity -]</h3> <br> Enter the name of identifier attribute:";
-			inputBoxInput.focus();
-			inputBoxButton.onclick = function () {
-				entities[entity].attributes[FIRST_INDEX].name = inputBoxInput.value;
-				inputBoxInput.value = "";
-				inputBox.style.display = "none";
-			}
-		}	
-	}
-	else
-	{	inputBoxLabel.innerHTML = "<h3>[- Update Entity -]</h3> <br> Enter entity name:";
-		if (stateIndex == 1)
-		{	inputBoxButton.onclick = function () {
-				inputBoxLabel.innerHTML = "<h3>[- New Entity -]</h3> <br> Enter the name of identifier attribute:";
-				entities[entity].name = inputBoxInput.value;
-				clear();
-				inputBoxInput.value = "";
-				inputBox.style.display = "none";
-			}		
-		}
-	}
+	inputBoxInput.focus();	
 }
 
 function removeEntity(entity, finger)
-{	
-	var confirmationBox = document.getElementById("confirmationBox");
-	var confirmationBoxLabel = document.getElementById("labelGenericConfirmation");
-	var confirmationOkButton = document.getElementById("genericConfirmButton");
-	var confirmationCancelButton = document.getElementById("genericCancelButton");
-	
-	var confirmationValue = document.getElementById("genericConfirmValue");
+{	if (entityInRelationship(entity))
+	{	message = "<h3>[- Alert Information -]</h3>You can not delete an entity contained in a Relationship!";
+		confirmationBoxGenerate(message);
+		
+		confirmationOkButton.value = "Ok";
+		confirmationCancelButton.style.display = "none";
 
-	confirmationBox.style.width = canvasWidth*PROPORTIONAL_PERCENTAGE_WIDTH_INPUT;
+		confirmationOkButton.onclick = function () {
+			confirmationBox.style.display = "none";
+			confirmationCancelButton.style.display = "inline";
+			returnEntityLastPosition(entity,finger);
+			confirmationOkButton.value = "Yes";
+			clear();
+		}
+	}
+	else
+	{	message = "<h3>Confirmation Window</h3>Want are you  exclude this entity?";
+		confirmationBoxGenerate(message);
+		
+		confirmationOkButton.onclick = function () {
+			confirmationBox.style.display = "none";
+			entities.splice(entity, 1);
+			clear();
+		}
+		
+		confirmationCancelButton.onclick = function () {
+			confirmationBox.style.display = "none";
+			returnEntityLastPosition(entity,finger);
+			clear();
+		}
+	}
+	confirmationOkButton.focus();
+
+	return true;
+}
+
+function confirmationBoxGenerate(message)
+{	confirmationBox.style.width = canvasWidth*PROPORTIONAL_PERCENTAGE_WIDTH_INPUT;
 	confirmationBox.style.height = canvasHeight*PROPORTIONAL_PERCENTAGE_HEIGHT_INPUT;
 
-	var tempInputWidth = confirmationBox.style.width.substr(0,confirmationBox.style.width.indexOf('p')-2);
-	var tempInputHeight = confirmationBox.style.height.substr(0,confirmationBox.style.height.indexOf('p')-2);
+	var tempInputWidth = confirmationBox.style.width.substr(0,confirmationBox.style.width.indexOf('p')-HALF);
+	var tempInputHeight = confirmationBox.style.height.substr(0,confirmationBox.style.height.indexOf('p')-HALF);
 
 	confirmationBox.style.left = ((canvasWidth/HALF)-(tempInputWidth/HALF))+"px";
 	confirmationBox.style.top = ((canvasHeight/HALF)-(tempInputHeight/HALF))+"px";
-
+	
+	confirmationBoxLabel.innerHTML = message;
 	confirmationBox.style.display = "block";
-	confirmationBoxLabel.innerHTML = "Want are you  exclude this entity?";
-	confirmationOkButton.focus();
-
-	confirmationOkButton.onclick = function () {
-		confirmationBox.style.display = "none";
-		entities.splice(entity, 1);
-		clear();
-	}
-	confirmationCancelButton.onclick = function () {
-		confirmationBox.style.display = "none";
-		
-		entities[entity].minorX = (finger.pointXi+finger.spaceOfMinorEntityXAndXi);
-		entities[entity].minorY = (finger.pointYi+finger.spaceOfMinorEntityYAndYi);
-			
-		entities[entity].attributes[FIRST_INDEX].pointX = entities[entity].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT);
-		entities[entity].attributes[FIRST_INDEX].pointY = entities[entity].minorY-20;
-		fingerInEntities = false;
-		clear();
-	}
+	
 }
 
 // COLISION METHODS
@@ -764,26 +840,26 @@ function drawRelationships()
 	for (var i = 0; i < relationships.length; i++) 
 	{	if(relationships[i].active != false)
 		{	context.beginPath();
-		
-			var minorXofEntityA = entities[relationships[i].entityA].minorX; 
-			var minorXofEntityB = entities[relationships[i].entityB].minorX; 
 			
-			if (minorXofEntityA < minorXofEntityB)
-			{	context.moveTo(minorXofEntityB,entities[parseInt(relationships[i].entityB)].minorY);
-				context.lineTo(minorXofEntityA,entities[parseInt(relationships[i].entityA)].minorY);
-			}
-			else
-			{	context.moveTo(minorXofEntityA,entities[parseInt(relationships[i].entityA)].minorY);
-				context.lineTo(minorXofEntityB,entities[parseInt(relationships[i].entityB)].minorY);
-			}
-			
+			context.moveTo(entities[relationships[i].entityA].minorX+(ENTITIES_WIDTH/HALF),entities[relationships[i].entityA].minorY+(ENTITIES_HEIGHT/HALF));
+			context.lineTo(entities[relationships[i].entityB].minorX+(ENTITIES_WIDTH/HALF),entities[relationships[i].entityB].minorY+(ENTITIES_HEIGHT/HALF));
 			context.stroke(); 
-		
-			// draw cardinality
+		}
+	}
+}
+
+function drawCardinalities()
+{	for (var i = 0; i < relationships.length; i++) 
+	{	if(relationships[i].active != false)
+		{	// draw cardinality
 			context.font="18px Arial";
 			context.fillStyle="#008B00";
-			context.fillText(relationships[i].cardinalityA,entities[parseInt(relationships[i].entityA)].minorX-12,entities[parseInt(relationships[i].entityA)].minorY+10);
-			context.fillText(relationships[i].cardinalityB,entities[parseInt(relationships[i].entityB)].minorX-12,entities[parseInt(relationships[i].entityB)].minorY+10);
+			context.fillText(relationships[i].cardinalityA,
+				(entities[relationships[i].entityA].minorX+(ENTITIES_WIDTH/HALF))+(BASE_TEN/HALF),
+				(entities[relationships[i].entityA].minorY+(ENTITIES_HEIGHT/HALF))+(BASE_TEN*HALF));
+			context.fillText(relationships[i].cardinalityB,
+				(entities[relationships[i].entityB].minorX+(ENTITIES_WIDTH/HALF))+(BASE_TEN/HALF),
+				(entities[relationships[i].entityB].minorY+(ENTITIES_HEIGHT/HALF))+(BASE_TEN*HALF));
 		}
 	}
 }
@@ -799,27 +875,29 @@ function drawAttributes(entity)
 		//draw line from entity to attr
 		context.beginPath();
 		context.moveTo(entity.attributes[i].pointX,entity.attributes[i].pointY+entity.attributes[i].radius);
-		context.lineTo(entity.attributes[i].pointX,entity.attributes[i].pointY+20);
+		context.lineTo(entity.attributes[i].pointX,entity.attributes[i].pointY+(BASE_TEN*HALF));
 		context.stroke(); 
 		
 		// draw circle attr
 		context.font="18px Arial";
 		context.fillStyle="#008B00";
-		context.fillText(entity.attributes[i].name,entity.attributes[i].pointX+12,entity.attributes[i].pointY);
+		context.fillText(entity.attributes[i].name,entity.attributes[i].pointX+(BASE_TEN+HALF),entity.attributes[i].pointY);
 	}
 }
 
 function drawEntities()
 {	context.fillStyle = "black";
+	drawRelationships();
 	
 	for (var i = 0; i < entities.length; i++)
-	{	context.strokeRect(entities[i].minorX, entities[i].minorY, ENTITIES_WIDTH, ENTITIES_HEIGHT);
+	{	context.fillStyle = "#FDF5E6";
+		context.fillRect(entities[i].minorX, entities[i].minorY, ENTITIES_WIDTH, ENTITIES_HEIGHT);
 		context.font="20px Arial";
 		context.fillStyle="black";
 		context.fillText(entities[i].name,entities[i].minorX+((ENTITIES_WIDTH/HALF)*TWENTY_PERCENT),entities[i].minorY+(ENTITIES_HEIGHT/HALF));
+		drawCardinalities();
 		drawAttributes(entities[i]);
 	}
-	drawRelationships();
 }
 
 function clear()
